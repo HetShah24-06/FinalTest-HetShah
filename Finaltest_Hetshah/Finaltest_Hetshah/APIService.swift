@@ -6,48 +6,43 @@
 //
 
 import Foundation
+import UIKit
 
 class APIService {
-  func fetchDrinks(by ingredient: String, completion: @escaping ([Drink]?) -> Void) {
-    let encodedIngredient = ingredient.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-    let urlString = "https://www.thecocktaildb.com/api/json/v1/1/filter.php?i=\(encodedIngredient)"
-     
-    guard let url = URL(string: urlString) else {
-      completion(nil)
-      return
+
+  func fetchDrinks(ingredient: String, viewController: UIViewController, completionHandler: @escaping ([Drink]) -> Void) {
+    let baseURL = "https://www.thecocktaildb.com/api/json/v1/1/filter.php?i="
+    let urlString = baseURL + ingredient.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!
+    guard let url = URL(string: urlString) else { return }
+
+    let task = URLSession.shared.dataTask(with: url) { data, _, error in
+      if let data = data {
+        let decoder = JSONDecoder()
+        if let result = try? decoder.decode(DrinksResponse.self, from: data) {
+          DispatchQueue.main.async {
+            completionHandler(result.drinks ?? [])
+          }
+        }
+      }
     }
-
-    URLSession.shared.dataTask(with: url) { data, _, error in
-      guard let data = data, error == nil else {
-        completion(nil)
-        return
-      }
-
-      let result = try? JSONDecoder().decode(DrinkList.self, from: data)
-      DispatchQueue.main.async {
-        completion(result?.drinks)
-      }
-    }.resume()
+    task.resume()
   }
 
-  func fetchDrinkDetails(by id: String, completion: @escaping (DrinkDetail?) -> Void) {
-    let urlString = "https://www.thecocktaildb.com/api/json/v1/1/lookup.php?i=\(id)"
-     
-    guard let url = URL(string: urlString) else {
-      completion(nil)
-      return
+  func fetchDrinkDetail(id: String, viewController: UIViewController, completionHandler: @escaping (DrinkDetail?) -> Void) {
+    let baseURL = "https://www.thecocktaildb.com/api/json/v1/1/lookup.php?i="
+    let urlString = baseURL + id
+    guard let url = URL(string: urlString) else { return }
+
+    let task = URLSession.shared.dataTask(with: url) { data, _, error in
+      if let data = data {
+        let decoder = JSONDecoder()
+        if let result = try? decoder.decode(DrinkDetailsResponse.self, from: data) {
+          DispatchQueue.main.async {
+            completionHandler(result.drinks?.first)
+          }
+        }
+      }
     }
-
-    URLSession.shared.dataTask(with: url) { data, _, error in
-      guard let data = data, error == nil else {
-        completion(nil)
-        return
-      }
-
-      let result = try? JSONDecoder().decode(DrinkDetailList.self, from: data)
-      DispatchQueue.main.async {
-        completion(result?.drinks.first)
-      }
-    }.resume()
+    task.resume()
   }
 }

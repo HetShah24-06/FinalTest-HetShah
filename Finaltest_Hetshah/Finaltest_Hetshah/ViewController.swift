@@ -7,85 +7,59 @@
 
 import UIKit
 
-class ViewController: UIViewController {
+class ViewController: UIViewController, UISearchBarDelegate, UITableViewDelegate, UITableViewDataSource {
     
 
     @IBOutlet weak var searchBar: UISearchBar!
     
     @IBOutlet weak var tableView: UITableView!
    
-     var drinks: [Drink] = []
+    var drinks: [Drink] = []
+      let apiService = APIService()
 
-     override func viewDidLoad() {
-       super.viewDidLoad()
-       title = "Cocktail Finder"
-       searchBar.delegate = self
-       tableView.dataSource = self
-       tableView.delegate = self
-     }
+      override func viewDidLoad() {
+        super.viewDidLoad()
+        searchBar.delegate = self
+        tableView.delegate = self
+        tableView.dataSource = self
+      }
 
-    func searchDrinks(ingredient: String) {
-      let query = ingredient.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-      let urlString = "https://www.thecocktaildb.com/api/json/v1/1/filter.php?i=\(query)"
-       
-      if let url = URL(string: urlString) {
-        let task = URLSession.shared.dataTask(with: url) { data, _, error in
-          if let data = data {
-            let decoder = JSONDecoder()
-            if let result = try? decoder.decode(DrinkList.self, from: data) {
+      func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        guard let ingredient = searchBar.text, !ingredient.isEmpty else { return }
+        apiService.fetchDrinks(ingredient: ingredient, viewController: self) { fetchedDrinks in
+          self.drinks = fetchedDrinks
+          self.tableView.reloadData()
+        }
+        searchBar.resignFirstResponder()
+      }
+
+      func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return drinks.count
+      }
+
+      func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let drink = drinks[indexPath.row]
+        let cell = tableView.dequeueReusableCell(withIdentifier: "drinkCell", for: indexPath)
+        cell.textLabel?.text = drink.strDrink
+
+        if let url = URL(string: drink.strDrinkThumb) {
+          DispatchQueue.global().async {
+            if let imgData = try? Data(contentsOf: url) {
               DispatchQueue.main.async {
-                self.drinks = result.drinks
-                self.tableView.reloadData()
+                cell.imageView?.image = UIImage(data: imgData)
+                cell.setNeedsLayout()
               }
             }
           }
         }
-        task.resume()
+        return cell
+      }
+
+      override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if segue.identifier == "showDetail",
+          let detailVC = segue.destination as? DetailViewController,
+          let indexPath = tableView.indexPathForSelectedRow {
+          detailVC.drinkID = drinks[indexPath.row].idDrink
+        }
       }
     }
-
-     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-       if segue.identifier == "showDetail",
-         let detailVC = segue.destination as? DetailViewController,
-         let indexPath = tableView.indexPathForSelectedRow {
-         let selectedDrink = drinks[indexPath.row]
-         detailVC.drinkID = selectedDrink.idDrink
-       }
-     }
-   }
-
-   extension ViewController: UISearchBarDelegate {
-     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-       if let text = searchBar.text, !text.isEmpty {
-         searchDrinks(ingredient: text)
-         searchBar.resignFirstResponder()
-       }
-     }
-   }
-
-   extension ViewController: UITableViewDataSource, UITableViewDelegate {
-
-     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-       drinks.count
-     }
-
-     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-
-       let cell = tableView.dequeueReusableCell(withIdentifier: "drinkCell", for: indexPath)
-       let drink = drinks[indexPath.row]
-       cell.textLabel?.text = drink.strDrink
-
-       if let url = URL(string: drink.strDrinkThumb) {
-         DispatchQueue.global().async {
-           if let data = try? Data(contentsOf: url) {
-             DispatchQueue.main.async {
-               cell.imageView?.image = UIImage(data: data)
-               cell.setNeedsLayout()
-             }
-           }
-         }
-       }
-
-       return cell
-     }
-   }

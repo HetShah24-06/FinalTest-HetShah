@@ -6,8 +6,8 @@
 //
 import Foundation
 
-struct DrinkList: Codable {
-  let drinks: [Drink]
+struct DrinksResponse: Codable {
+  let drinks: [Drink]?
 }
 
 struct Drink: Codable {
@@ -16,8 +16,8 @@ struct Drink: Codable {
   let idDrink: String
 }
 
-struct DrinkDetailList: Codable {
-  let drinks: [DrinkDetail]
+struct DrinkDetailsResponse: Codable {
+  let drinks: [DrinkDetail]?
 }
 
 struct DrinkDetail: Codable {
